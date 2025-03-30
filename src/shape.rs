@@ -19,6 +19,10 @@ pub struct StillShape {
     shape_data: ShapeData,
 }
 
+pub struct NesShape {
+    shape_data: ShapeData,
+}
+
 
 impl ShapeData {
 
@@ -104,6 +108,48 @@ impl Rotation for StillShape {
     fn rotate(&self, row: u8, col: u8, _rot:u8) -> &u8 {
 
         &self.shape_data.m[((row * self.shape_data.width) + col) as usize]
+
+    }
+}
+
+impl NesShape {
+    pub fn build(shape_data: ShapeData) -> Self {
+        Self {
+            shape_data,
+        }
+    }
+
+}
+
+impl Rotation for NesShape {
+    fn shape_data(&self) -> &ShapeData {
+        &self.shape_data
+    }
+
+    fn rotate(&self, row: u8, col: u8, rot:u8) -> &u8 {
+        let row_r: u8;
+        let colr_r: u8;
+        match rot {
+            0 | 2 => {
+                row_r = row;
+                colr_r = col;
+            },
+            // 1 => {
+            //     row_r = (self.shape_data.width - 1) - col;
+            //     colr_r = row;
+            // },
+            // 2 => {
+            //     row_r = (self.shape_data.width - 1) - row;
+            //     colr_r = (self.shape_data.width - 1) - col;
+            // },
+            1 | 3 => {
+                row_r = col;
+                colr_r = (self.shape_data.width - 1) - row;
+            },
+            _ => panic!("Rotation values must go from 0 to 3"),
+        }
+    
+        &self.shape_data.m[((row_r * self.shape_data.width) + colr_r) as usize]
 
     }
 }
