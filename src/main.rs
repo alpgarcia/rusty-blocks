@@ -1,11 +1,14 @@
 use macroquad::prelude::*;
+
 use rusty_blocks::shape::NesShape;
 use rusty_blocks::shape::Shape;
 use rusty_blocks::shape::Rotation;
 use rusty_blocks::shape::ShapeData;
 use rusty_blocks::shape::StillShape;
 
+
 const BLOCK_SIZE: f32 = 20.0;
+
 
 fn generate_srs_shapes() -> Vec<Box<dyn Rotation>> {
 
@@ -112,7 +115,7 @@ fn generate_srs_shapes() -> Vec<Box<dyn Rotation>> {
     ]
 }
 
-fn draw_shape(shape: &dyn Rotation, pos_x: f32, pos_y: f32, r: u8) {
+fn draw_shape(shape: &dyn Rotation, pos_x: f32, pos_y: f32, r: u8, block_size: f32) {
 
     // TODO move this to a drawing/graphics module?
 
@@ -123,18 +126,18 @@ fn draw_shape(shape: &dyn Rotation, pos_x: f32, pos_y: f32, r: u8) {
         
         if *shape.rotate(shape_row, shape_col, r) != 0 {
             draw_rectangle(
-                pos_x + (shape_col as f32 * BLOCK_SIZE) + 1.0,
-                pos_y + (shape_row as f32 * BLOCK_SIZE) + 1.0,
-                BLOCK_SIZE - 2.0,
-                BLOCK_SIZE - 2.0,
+                pos_x + (shape_col as f32 * block_size) + 1.0,
+                pos_y + (shape_row as f32 * block_size) + 1.0,
+                block_size - 2.0,
+                block_size - 2.0,
                 shape.shape_data().color(),
             );
         } else {
             draw_rectangle(
-                pos_x + (shape_col as f32 * BLOCK_SIZE) + 1.0,
-                pos_y + (shape_row as f32 * BLOCK_SIZE) + 1.0,
-                BLOCK_SIZE - 2.0,
-                BLOCK_SIZE - 2.0,
+                pos_x + (shape_col as f32 * block_size) + 1.0,
+                pos_y + (shape_row as f32 * block_size) + 1.0,
+                block_size - 2.0,
+                block_size - 2.0,
                 BLACK,
             );
         }
@@ -153,6 +156,9 @@ async fn main() {
     loop {
         clear_background(DARKGRAY);
 
+        let block_size = BLOCK_SIZE.min(screen_width() / 30.0)
+            .min(screen_height() / 30.0);
+
         // TODO add keyboard controls instead of automatic rotation
         if (get_time() - time) > 2.0 {
             
@@ -161,15 +167,15 @@ async fn main() {
 
         }
 
-        let mut pos_x = BLOCK_SIZE;
+        let mut pos_x = block_size;
         let mut pos_y = -50.0;
         let mut i = 0;
         for shape in &shapes {
 
-            if pos_x + BLOCK_SIZE * 5.0 >= screen_width() ||
+            if pos_x + block_size * 5.0 >= screen_width() ||
                 i % 7 == 0 {
                 
-                pos_x = BLOCK_SIZE;
+                pos_x = block_size;
                 pos_y += 100.0;
 
                 if i == 0 {
@@ -178,13 +184,13 @@ async fn main() {
                     draw_text("NES", pos_x, pos_y, 50.0, BLUE);
                 }
                 
-                pos_x += BLOCK_SIZE * 5.0;
+                pos_x += block_size * 5.0;
             }
 
             i += 1;
 
-            draw_shape(&**shape, pos_x, pos_y, rot);
-            pos_x += BLOCK_SIZE * 5.0;
+            draw_shape(&**shape, pos_x, pos_y, rot, block_size);
+            pos_x += block_size * 5.0;
         }
 
         draw_fps();
