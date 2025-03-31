@@ -150,35 +150,41 @@ async fn main() {
 
     let mut rot = 0;
     let mut time = get_time();
-    let mut a = 0.01;
-    let mut t = 0.5;
     loop {
         clear_background(DARKGRAY);
 
         // TODO add keyboard controls instead of automatic rotation
-        if (get_time() - time) > t {
+        if (get_time() - time) > 2.0 {
             
             rot = (rot + 1) % 4;
-            
-            if t <= 0.25 || t >= 0.5 {
-                a = -a;
-            }
-            t = t + a;
-
             time = get_time();
 
         }
 
-        let mut pos_x = 50.0;
-        let mut pos_y = 50.0;
+        let mut pos_x = BLOCK_SIZE;
+        let mut pos_y = -50.0;
+        let mut i = 0;
         for shape in &shapes {
-            draw_shape(&**shape, pos_x, pos_y, rot);
-            pos_x += 100.0;
 
-            if pos_x >= 750.0 {
-                pos_x = 50.0;
+            if pos_x + BLOCK_SIZE * 5.0 >= screen_width() ||
+                i % 7 == 0 {
+                
+                pos_x = BLOCK_SIZE;
                 pos_y += 100.0;
+
+                if i == 0 {
+                    draw_text("SRS", pos_x, pos_y, 50.0, BLUE);
+                } else if i == 7 {
+                    draw_text("NES", pos_x, pos_y, 50.0, BLUE);
+                }
+                
+                pos_x += BLOCK_SIZE * 5.0;
             }
+
+            i += 1;
+
+            draw_shape(&**shape, pos_x, pos_y, rot);
+            pos_x += BLOCK_SIZE * 5.0;
         }
 
         draw_fps();
