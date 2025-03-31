@@ -145,6 +145,18 @@ fn draw_shape(shape: &dyn Rotation, pos_x: f32, pos_y: f32, r: u8, block_size: f
 
 }
 
+fn rotate_clockwise(rot: &mut u8) {
+    *rot = (*rot + 1) % 4; 
+}
+
+fn rotate_counter_cw(rot: &mut u8) {
+    if *rot == 0 {
+        *rot = 3;
+    } else {
+        *rot = (*rot - 1) % 4; 
+    }
+}
+
 #[macroquad::main("Rusty Blocks")]
 async fn main() {
 
@@ -152,20 +164,41 @@ async fn main() {
     let shapes = generate_srs_shapes();
 
     let mut rot = 0;
-    let mut time = get_time();
     loop {
+
+        // CLEAR SCREEN & COMPUTE BLOCK SIZE --------------------------
+
         clear_background(DARKGRAY);
 
+        // We'll use this to scale the game
         let block_size = BLOCK_SIZE.min(screen_width() / 30.0)
             .min(screen_height() / 30.0);
 
-        // TODO add keyboard controls instead of automatic rotation
-        if (get_time() - time) > 2.0 {
-            
-            rot = (rot + 1) % 4;
-            time = get_time();
+        // PROCESS INPUT ----------------------------------------------
 
+        for touch in touches() {
+            match touch.phase {
+                TouchPhase::Started => {
+                    if touch.position.x > screen_width() / 2.0 {
+                        rotate_clockwise(&mut rot);
+
+                    } else {
+                        rotate_counter_cw(&mut rot);
+                    }
+                },
+                _ => (),
+            }
         }
+
+        if is_key_pressed(KeyCode::D) {
+            rotate_clockwise(&mut rot);
+        }
+
+        if is_key_pressed(KeyCode::S) {
+            rotate_counter_cw(&mut rot);
+        }
+
+        // DRAW SHAPES
 
         let mut pos_x = block_size;
         let mut pos_y = -50.0;
