@@ -1,13 +1,13 @@
 use macroquad::prelude::Color;
 
 pub trait Rotation {
-    fn rotate(&self, row: u8, col: u8, rot:u8) -> &u8;
+    fn rotate(&self, row: usize, col: usize, rot:usize) -> &usize;
     fn shape_data(&self) -> &ShapeData;
 }
 
 pub struct ShapeData {
-    m: Vec<u8>,
-    width: u8,
+    m: Vec<usize>,
+    width: usize,
     color: Color,
 }
 
@@ -26,7 +26,7 @@ pub struct NesShape {
 
 impl ShapeData {
 
-    pub fn build(m: Vec<u8>, width: u8, color: Color) -> Self {
+    pub fn build(m: Vec<usize>, width: usize, color: Color) -> Self {
         Self {
             m,
             width,
@@ -38,12 +38,20 @@ impl ShapeData {
         self.color
     }
 
-    pub fn width(&self) -> u8 {
+    pub fn width(&self) -> usize {
         self.width
     }
 
     pub fn len(&self) -> usize {
         self.m.len()
+    }
+
+    pub fn row(&self, idx: usize) -> usize {
+        idx / self.width()
+    }
+
+    pub fn col(&self, idx: usize) -> usize {
+        idx % self.width()
     }
     
 }
@@ -63,9 +71,9 @@ impl Rotation for Shape {
         &self.shape_data
     }
 
-    fn rotate(&self, row: u8, col: u8, rot:u8) -> &u8 {
-        let row_r: u8;
-        let colr_r: u8;
+    fn rotate(&self, row: usize, col: usize, rot:usize) -> &usize {
+        let row_r: usize;
+        let colr_r: usize;
         match rot {
             0 => {
                 row_r = row;
@@ -105,7 +113,7 @@ impl Rotation for StillShape {
         &self.shape_data
     }
 
-    fn rotate(&self, row: u8, col: u8, _rot:u8) -> &u8 {
+    fn rotate(&self, row: usize, col: usize, _rot:usize) -> &usize {
 
         &self.shape_data.m[((row * self.shape_data.width) + col) as usize]
 
@@ -126,9 +134,9 @@ impl Rotation for NesShape {
         &self.shape_data
     }
 
-    fn rotate(&self, row: u8, col: u8, rot:u8) -> &u8 {
-        let row_r: u8;
-        let colr_r: u8;
+    fn rotate(&self, row: usize, col: usize, rot:usize) -> &usize {
+        let row_r: usize;
+        let colr_r: usize;
         match rot {
             0 | 2 => {
                 row_r = row;

@@ -1,4 +1,5 @@
 
+pub mod playfield;
 pub mod shape;
 
 pub fn add(left: u64, right: u64) -> u64 {
