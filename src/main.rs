@@ -1,3 +1,5 @@
+use std::thread::sleep;
+
 use macroquad::prelude::*;
 
 use rusty_blocks::playfield::Playfield;
@@ -119,13 +121,30 @@ fn generate_srs_shapes() -> Vec<Box<dyn Rotation>> {
 fn color_for(i: usize) -> Color {
     if i == 0 {
         BLACK
+    } else if i == 99 {
+        DARKPURPLE 
     } else {
         WHITE
     }
 }
 
 fn draw_playfield(p: &Playfield, pos_x: f32, pos_y: f32, block_size: f32) {
-    for row in (0..p.n_rows()-2).rev() {
+    // Draw hidden rows
+    for row in (0..2).rev() {
+        for col in (0..p.n_cols()).rev() {
+            draw_rectangle_lines(
+                pos_x + (col as f32 * block_size) + 1.0,
+                pos_y + (row as f32 * block_size) + 1.0,
+                block_size - 2.0,
+                block_size - 2.0,
+                4.0,
+                color_for(p.get_cell(row, col)),
+            );
+        }
+    }
+
+    // Draw visible rows
+    for row in (2..p.n_rows()).rev() {
         for col in (0..p.n_cols()).rev() {
             draw_rectangle(
                 pos_x + (col as f32 * block_size) + 1.0,
@@ -139,7 +158,7 @@ fn draw_playfield(p: &Playfield, pos_x: f32, pos_y: f32, block_size: f32) {
 }
 
 fn draw_shape(shape: &dyn Rotation, pos_x: f32, pos_y: f32, 
-                                    r: usize, block_size: f32) {
+                                    r: isize, block_size: f32) {
 
     // TODO move this to a drawing/graphics module?
 
@@ -169,15 +188,30 @@ fn draw_shape(shape: &dyn Rotation, pos_x: f32, pos_y: f32,
 
 }
 
-fn rotate_clockwise(rot: &mut usize) {
-    *rot = (*rot + 1) % 4; 
+fn rotate_clockwise(pf: &Playfield, shape: &dyn Rotation, 
+                    cs_row: usize, cs_col: usize, rot: isize) -> isize {
+    
+    if pf.collides(shape, cs_row, cs_col as isize, (rot + 1) % 4) {
+        rot
+    } else {
+        (rot + 1) % 4
+    }
 }
 
-fn rotate_counter_cw(rot: &mut usize) {
-    if *rot == 0 {
-        *rot = 3;
+fn rotate_counter_cw(pf: &Playfield, shape: &dyn Rotation, 
+                     cs_row: usize, cs_col: usize, rot: isize) -> isize{
+    
+    let new_rot: isize;
+    if rot == 0 {
+        new_rot = 3;
     } else {
-        *rot = (*rot - 1) % 4; 
+        new_rot = (rot - 1) % 4;
+    }
+
+    if pf.collides(shape, cs_row, cs_col as isize, new_rot) {
+        rot
+    } else {
+        new_rot
     }
 }
 
@@ -187,19 +221,36 @@ async fn main() {
     // TODO try to add NES & Gameboy shapes options too
     let shapes = generate_srs_shapes();
 
-    let p = Playfield::build();
+    let pf = Playfield::build();
+
+    let current_shape = &shapes[0];
 
     let mut rotation_demo = false;
-    let mut rot = 0;
+    let mut cs_col = (pf.n_cols() / 2) 
+                     - (current_shape.shape_data().width() / 2);
+    let cs_row = 0;
+    let mut col_f = 0.0; 
+    let mut rot: isize = 0;
+
+    let mut start = get_time();
     loop {
 
-        // CLEAR SCREEN & COMPUTE BLOCK SIZE --------------------------
+        // let delta = get_frame_time();
+
+        // CLEAR SCREEN -----------------------------------------------
 
         clear_background(DARKGRAY);
+
+        // SCALE BLOCK SIZE AND COMPUTE UI COMPONENTS POSITIONS -------
 
         // We'll use this to scale the game
         let block_size = BLOCK_SIZE.min(screen_width() / 30.0)
             .min(screen_height() / 30.0);
+
+        let pf_x = (screen_width() / 2.0) 
+                    - ((pf.n_cols() / 2) as f32 * block_size);
+        let pf_y = (screen_height() / 2.0) 
+                    - ((pf.n_rows() / 2) as f32 * block_size);
 
         // PROCESS INPUT ----------------------------------------------
 
@@ -207,36 +258,66 @@ async fn main() {
             match touch.phase {
                 TouchPhase::Started => {
                     if touch.position.x > screen_width() / 2.0 {
-                        rotate_clockwise(&mut rot);
+                        
+                        rot = rotate_clockwise(
+                            &pf, &**current_shape, cs_row, cs_col, rot);
 
                     } else {
-                        rotate_counter_cw(&mut rot);
+
+                        rot = rotate_counter_cw(
+                            &pf, &**current_shape, cs_row, cs_col, rot);
                     }
                 },
                 _ => (),
             }
         }
 
-        if is_key_pressed(KeyCode::D) {
-            rotate_clockwise(&mut rot);
+        if is_key_pressed(KeyCode::D) { 
+            rot = rotate_clockwise(
+                &pf, &**current_shape, cs_row, cs_col, rot);
         }
 
-        if is_key_pressed(KeyCode::S) {
-            rotate_counter_cw(&mut rot);
+        if is_key_pressed(KeyCode::S) { 
+            rot = rotate_counter_cw(
+                &pf, &**current_shape, cs_row, cs_col, rot);
         }
 
         if is_key_pressed(KeyCode::R) {
             rotation_demo = !rotation_demo;
         }
 
+        // TODO es mejor usar incrementos cada vez que se detecta una
+        //      pulsación para evitar perder pulsaciones
+        if get_time() - start >= 0.05 {
+            
+            if is_key_down(KeyCode::Left) 
+                && !pf.collides(
+                    &**current_shape, cs_row, cs_col as isize - 1, rot) {
+                    
+                    cs_col -= 1;
+            }
+
+            if is_key_down(KeyCode::Right)
+                && !pf.collides(
+                    &**current_shape, cs_row, cs_col  as isize + 1 as isize, rot) {
+                    
+                    cs_col += 1;
+            }
+            
+            start = get_time();
+        } 
+
         // DRAW PLAYFIELD ---------------------------------------------
 
         if !rotation_demo {
-            let pf_x = (screen_width() / 2.0) 
-                        - ((p.n_cols() / 2) as f32 * block_size);
-            let pf_y = (screen_height() / 2.0) 
-                        - ((p.n_rows() / 2) as f32 * block_size);
-            draw_playfield(&p, pf_x, pf_y, block_size);
+            
+            draw_playfield(&pf, pf_x, pf_y, block_size);
+
+            // DRAW CURRENT SHAPE -------------------------------------
+
+            let cs_x = pf_x + (cs_col as f32 * block_size);
+            let cs_y = pf_y + (cs_row as f32 * block_size);
+            draw_shape(&**current_shape, cs_x, cs_y, rot, block_size);
         
         } else {
         
