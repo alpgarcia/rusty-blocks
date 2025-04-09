@@ -1,4 +1,5 @@
-use std::thread::sleep;
+// Project: rusty_blocks
+
 
 use macroquad::prelude::*;
 
@@ -11,6 +12,7 @@ use rusty_blocks::shape::StillShape;
 
 
 const BLOCK_SIZE: f32 = 20.0;
+const SHIFT_DELAY: f64 = 0.1;
 
 
 fn generate_srs_shapes() -> Vec<Box<dyn Rotation>> {
@@ -229,10 +231,11 @@ async fn main() {
     let mut cs_col = (pf.n_cols() / 2) 
                      - (current_shape.shape_data().width() / 2);
     let cs_row = 0;
-    let mut col_f = 0.0; 
+    // let mut col_f = 0.0; 
     let mut rot: isize = 0;
 
     let mut start = get_time();
+    let mut first_press = true;
     loop {
 
         // let delta = get_frame_time();
@@ -286,26 +289,33 @@ async fn main() {
             rotation_demo = !rotation_demo;
         }
 
-        // TODO es mejor usar incrementos cada vez que se detecta una
-        //      pulsación para evitar perder pulsaciones
-        if get_time() - start >= 0.05 {
+        if is_key_released(KeyCode::Left) || 
+            is_key_released(KeyCode::Right) {
+            first_press = true;
+        }
             
-            if is_key_down(KeyCode::Left) 
-                && !pf.collides(
-                    &**current_shape, cs_row, cs_col as isize - 1, rot) {
-                    
+        if is_key_down(KeyCode::Left) 
+            && !pf.collides(
+                &**current_shape, cs_row, cs_col as isize - 1, rot) {
+                
+                if first_press || get_time() - start >= SHIFT_DELAY {
                     cs_col -= 1;
-            }
+                    first_press = false;
+                    start = get_time();
+                }
+        }
 
-            if is_key_down(KeyCode::Right)
-                && !pf.collides(
-                    &**current_shape, cs_row, cs_col  as isize + 1 as isize, rot) {
-                    
+        if is_key_down(KeyCode::Right)
+            && !pf.collides(
+                &**current_shape, cs_row, cs_col  as isize + 1 as isize, rot) {
+                
+                if first_press || get_time() - start >= SHIFT_DELAY {
                     cs_col += 1;
-            }
-            
-            start = get_time();
-        } 
+                    first_press = false;
+                    start = get_time();
+                }
+        }
+        
 
         // DRAW PLAYFIELD ---------------------------------------------
 

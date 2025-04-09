@@ -26,6 +26,9 @@ The game implements the following rotation systems:
 * [SRS (Standard Rotation System)](https://harddrop.com/wiki/SRS)
 * [NRS (Nintendo Rotation System - Right Handed Version)](https://harddrop.com/wiki/Nintendo_Rotation_System)
 
+## Shift Delay System
+The game implements a simple shift delay system when a key remains pressed. It is a time delay between the moves of the shape. The delay is set to 0.1 seconds by default, except for the first key press, which immediately moves the shape 1 space. The delay is then applied to the following shape moves until the key is released.
+
 ## Playfield
 The playfield is represented by an array of 276 `usize` integers. It represents a 10x22 grid surrounded by two edges at the sides and one at the bottom, making a total of 12x23 positions, including edges or borders. 
 
