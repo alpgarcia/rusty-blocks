@@ -13,6 +13,7 @@ use rusty_blocks::shape::StillShape;
 
 const BLOCK_SIZE: f32 = 20.0;
 const SHIFT_DELAY: f64 = 0.1;
+const QUICK_DROP_DELAY: f64 = 0.05;
 
 
 fn generate_srs_shapes() -> Vec<Box<dyn Rotation>> {
@@ -134,8 +135,9 @@ fn color_for(i: usize) -> Color {
 
 fn draw_playfield(p: &Playfield, pos_x: f32, pos_y: f32, block_size: f32) {
     // Draw hidden rows
-    for row in (0..2).rev() {
-        for col in (0..p.n_cols()).rev() {
+    // TODO we might use some kind of animation for these killing zone
+    for row in 0..2 {
+        for col in 0..p.n_cols() {
             draw_rectangle_lines(
                 pos_x + (col as f32 * block_size) + 1.0,
                 pos_y + (row as f32 * block_size) + 1.0,
@@ -148,8 +150,8 @@ fn draw_playfield(p: &Playfield, pos_x: f32, pos_y: f32, block_size: f32) {
     }
 
     // Draw visible rows
-    for row in (2..p.n_rows()).rev() {
-        for col in (0..p.n_cols()).rev() {
+    for row in 2..p.n_rows() {
+        for col in 0..p.n_cols() {
             draw_rectangle(
                 pos_x + (col as f32 * block_size) + 1.0,
                 pos_y + (row as f32 * block_size) + 1.0,
@@ -376,7 +378,7 @@ async fn main() {
             if !pf.collides(
                 &**current_shape, cs_row + 1, cs_col as isize, rot) {
                 
-                if first_press || get_time() - shift_start >= SHIFT_DELAY {
+                if first_press || get_time() - shift_start >= QUICK_DROP_DELAY {
                     
                     cs_row += 1;
                     first_press = false;
@@ -413,6 +415,16 @@ async fn main() {
 
         if spawn_shape {
             pf.add(&**current_shape, cs_row, cs_col, rot);
+
+            // TODO remove cleared lines
+            //      we could return the row numbers affected by the
+            //      add method and check if all their cells are 0
+            //      if so, remove them
+            //      and move the rest down
+
+            // TODO add a score system
+            // TODO add a level system
+            // TODO add a line clear animation
         }
 
         // DRAW PLAYFIELD ---------------------------------------------
