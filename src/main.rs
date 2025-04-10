@@ -194,7 +194,7 @@ fn draw_shape(shape: &dyn Rotation, pos_x: f32, pos_y: f32,
 }
 
 fn rotate_clockwise(pf: &Playfield, shape: &dyn Rotation, 
-                    cs_row: usize, cs_col: usize, rot: isize) -> isize {
+                    cs_row: usize, cs_col: isize, rot: isize) -> isize {
     
     if pf.collides(shape, cs_row, cs_col as isize, (rot + 1) % 4) {
         rot
@@ -204,7 +204,7 @@ fn rotate_clockwise(pf: &Playfield, shape: &dyn Rotation,
 }
 
 fn rotate_counter_cw(pf: &Playfield, shape: &dyn Rotation, 
-                     cs_row: usize, cs_col: usize, rot: isize) -> isize{
+                     cs_row: usize, cs_col: isize, rot: isize) -> isize{
     
     let new_rot: isize;
     if rot == 0 {
@@ -247,8 +247,10 @@ async fn main() {
 
     // Initialize first shape
     let mut current_shape = random_shape(&shapes);
-    let mut cs_col = (pf.n_cols() / 2) 
-                     - (current_shape.shape_data().width() / 2);
+    let mut cs_col: isize = 
+                    ((pf.n_cols() / 2) 
+                     - (current_shape.shape_data().width() / 2)) 
+                     as isize;
     let mut cs_row: usize = 0;
     let mut rot: isize = 0;
     let mut spawn_shape = false;
@@ -289,8 +291,9 @@ async fn main() {
             // TODO: add a queue of shapes to spawn
             current_shape = random_shape(&shapes);
 
-            cs_col = (pf.n_cols() / 2) 
-                     - (current_shape.shape_data().width() / 2);
+            cs_col = ((pf.n_cols() / 2) 
+                     - (current_shape.shape_data().width() / 2))
+                     as isize;
             cs_row = 0;
             rot = 0;
             spawn_shape = false;
