@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use crate::shape::Rotation;
 
 
@@ -58,8 +60,16 @@ impl Playfield {
     /// * `row` - The row position to add the shape
     /// * `col` - The column position to add the shape
     /// * `r` - The rotation value of the shape
+    /// 
+    /// # Returns
+    /// A Vector with the rows that were modified in
+    /// the playfield. The rows are sorted in ascending
+    /// order.
+    /// 
     pub fn add(&mut self, shape: &dyn Rotation, 
-               row: usize, col: isize, r: isize) {
+               row: usize, col: isize, r: isize) -> Vec<usize> {
+        
+        let mut rows: Vec<usize> = Vec::new();
 
         for i in 0..shape.shape_data().len() {
         
@@ -76,9 +86,109 @@ impl Playfield {
                     (col + shape_col as isize) as usize);
 
                 self.cells[cell_idx] = v;
+
+                if !rows.contains(&(row + shape_row)) {
+                    rows.push(row + shape_row);
+                }
             }
         }
+
+        // Sort the rows in ascending order
+        rows.sort();
+
+        rows
+
     }
+
+    /// Check if the given rows are full. A row is full
+    /// if all the cells in the row are not empty (0).
+    /// The first and last columns are not checked because
+    /// they are borders and should always be full.
+    ///
+    /// # Arguments
+    /// * `rows` - The rows to check in ascending order
+    /// 
+    /// # Returns
+    /// A vector with the rows that are full in ascending order.
+    pub fn check_rows(&self, rows: &Vec<usize>) -> Vec<usize> {
+        
+        let mut cleared_rows: Vec<usize> = Vec::new();
+
+        for row in rows {
+            
+            let mut full_row = true;
+            
+            for col in 1..Self::N_COLS - 1 {
+                if self.cells[self.cell_idx(*row, col)] == 0 {
+                    full_row = false;
+                    break;
+                }
+            }
+
+            if full_row {
+                cleared_rows.push(*row);
+            }
+        }
+
+        cleared_rows
+
+    }
+
+    pub fn is_empty(&self, row: usize) -> bool {
+        for col in 1..Self::N_COLS - 1 {
+            if self.cells[self.cell_idx(row, col)] > 0 {
+                return false;
+            }
+        }
+        true
+    }
+
+    /// Clear the cells of the given rows. The cells are set to 0.
+    /// All rows above the cleared rows are moved down by one row.
+    ///
+    /// # Arguments
+    /// * `rows` - The rows to clear in ascending order
+    ///
+    pub fn clear_rows(&mut self, rows: &Vec<usize>) {
+
+        // Clear the cells of the given rows
+        for row in rows.iter() {
+            for col in 1..Self::N_COLS - 1 {
+                self.cells[self.cell_idx(*row, col)] = 0;
+            }
+        }
+
+        // Move the rows down
+        // The rows are sorted in ascending order, so we start
+        // from the top cleared row (closer to the top of the
+        // playfield). This way we ensure that we don't move
+        // down rows that are also cleared.
+        for cleared_row in rows.iter() {
+
+            // for each clared row, start from the row above
+            // (closer to the top of the playfield) and move
+            // to the top of the playfield 
+            for r in (0..*cleared_row).rev() {
+
+                // move the row down
+                for col in 1..Self::N_COLS - 1 {
+                    self.cells[self.cell_idx(r + 1, col)] = 
+                        self.cells[self.cell_idx(r, col)];
+                }
+
+                // if the row we just moved down is empty, we 
+                // can stop because all the rows above (which
+                // row index is less than the cleared row) are
+                // empty too (can't be empty rows in between
+                // not empty rows as any empty row below a 
+                // non-empty one should have been overwritten
+                // by the non-empty row in a previous iteration)
+                if self.is_empty(r) {
+                    break;
+                }
+            }
+        }
+    } 
 
     pub fn collides(&self, shape: &dyn Rotation, 
                 row: usize, col: isize, r: isize) -> bool{
@@ -168,7 +278,7 @@ mod tests {
 
         // Add shape to playfield at (0, 0) with rotation 0
         // (don't overwrite the borders)
-        pf.add(&shape, 0, 0, 0);
+        assert_eq!(vec![0, 1], pf.add(&shape, 0, 0, 0));
         assert_eq!(1, pf.get_cell(0, 1));
         assert_eq!(1, pf.get_cell(0, 2));
         assert_eq!(1, pf.get_cell(1, 1));
@@ -190,7 +300,7 @@ mod tests {
             4,
             BLACK,
         ));
-        pf.add(&shape, 0, 0, 0);
+        assert_eq!(vec![0, 1], pf.add(&shape, 0, 0, 0));
         assert_eq!(1, pf.get_cell(0, 0));
         assert_eq!(1, pf.get_cell(0, 1));
         assert_eq!(1, pf.get_cell(0, 2));
@@ -213,7 +323,7 @@ mod tests {
             4,
             BLACK,
         ));
-        pf.add(&shape, 0, -1, 0);
+        assert_eq!(vec![0, 1], pf.add(&shape, 0, -1, 0));
         assert_eq!(99, pf.get_cell(0, 0));
         assert_eq!(1, pf.get_cell(0, 1));
         assert_eq!(0, pf.get_cell(0, 2));
@@ -393,6 +503,296 @@ mod tests {
         for i in 0..pf.n_rows() {
             assert_eq!(true, pf.collides(&shape, i, 12, 1));
         }
+
+    }
+
+    #[test]
+    fn test_playfield_check_rows() {
+        let mut pf = Playfield::build();
+
+        let shape = Shape::build(ShapeData::build(
+            vec![1, 1, 1, 0,
+                 1, 1, 1, 0,
+                 0, 0, 0, 0,
+                 0, 0, 0, 0],
+            4,
+            BLACK,
+        ));
+
+        // Add shape to playfield at (0, 0) with rotation 0
+        // (don't overwrite the borders)
+        pf.add(&shape, 0, 1, 0);
+        assert_eq!(Vec::<usize>::new(), pf.check_rows(&vec![0]));
+        assert_eq!(Vec::<usize>::new(), pf.check_rows(&vec![1]));
+        assert_eq!(Vec::<usize>::new(), pf.check_rows(&vec![0, 1]));
+        pf.add(&shape, 0, 4, 0);
+        assert_eq!(Vec::<usize>::new(), pf.check_rows(&vec![0]));
+        assert_eq!(Vec::<usize>::new(), pf.check_rows(&vec![1]));
+        assert_eq!(Vec::<usize>::new(), pf.check_rows(&vec![0, 1]));
+        pf.add(&shape, 0, 5, 1);
+        assert_eq!(Vec::<usize>::new(), pf.check_rows(&vec![0]));
+        assert_eq!(Vec::<usize>::new(), pf.check_rows(&vec![1]));
+        assert_eq!(Vec::<usize>::new(), pf.check_rows(&vec![0, 1]));
+        pf.add(&shape, 0, 7, 1);
+
+        assert_eq!(vec![0], pf.check_rows(&vec![0]));
+        assert_eq!(vec![1], pf.check_rows(&vec![1]));
+        assert_eq!(vec![0, 1], pf.check_rows(&vec![0, 1]));
+
+    }
+
+    #[test]
+    fn test_playfield_clear_rows() {
+
+        // Test clearing 4 rows
+
+        let mut pf = Playfield::build();
+        let shape = Shape::build(ShapeData::build(
+            vec![1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            10,
+            BLACK,
+        ));
+        pf.add(&shape, 18, 1, 0);
+        
+        for i in 1..pf.n_cols() - 1 {
+            assert_eq!(1, pf.get_cell(18, i));
+            assert_eq!(1, pf.get_cell(19, i));
+            assert_eq!(1, pf.get_cell(20, i));
+            assert_eq!(1, pf.get_cell(21, i));
+        }
+
+        pf.clear_rows(&vec![18, 19, 20, 21]);
+
+        for i in 1..pf.n_cols() - 1 {
+            assert_eq!(0, pf.get_cell(18, i));
+            assert_eq!(0, pf.get_cell(19, i));
+            assert_eq!(0, pf.get_cell(20, i));
+            assert_eq!(0, pf.get_cell(21, i));
+        }
+
+        // Test clearing 2 rows with some garbage above
+        // that needs to be moved down
+
+        let mut pf = Playfield::build();
+
+        let shape = Shape::build(ShapeData::build(
+            vec![0, 0, 0, 0, 0, 0, 1, 1, 1, 1,
+                 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            10,
+            BLACK,
+        ));
+
+        pf.add(&shape, 19, 1, 0);
+
+        for i in 1..6 {
+            assert_eq!(0, pf.get_cell(19, i));
+        }
+        for i in 7..pf.n_cols() - 1 {
+            assert_eq!(1, pf.get_cell(19, i));
+        }
+        for i in 1..pf.n_cols() - 1 {
+            assert_eq!(1, pf.get_cell(20, i));
+            assert_eq!(1, pf.get_cell(21, i));
+        }
+
+        pf.clear_rows(&vec![20, 21]);
+        
+        for i in 1..pf.n_cols() - 1 {
+            assert_eq!(0, pf.get_cell(19, i));
+            assert_eq!(0, pf.get_cell(20, i));
+        }
+        for i in 1..6 {
+            assert_eq!(0, pf.get_cell(21, i));
+        }
+        for i in 7..pf.n_cols() - 1{
+            assert_eq!(1, pf.get_cell(21, i));
+        }
+
+        // Test clearing 3 rows with some garbage
+        // in between
+
+        let mut pf = Playfield::build();
+        let shape = Shape::build(ShapeData::build(
+            vec![1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                 0, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            10,
+            BLACK,
+        ));
+        pf.add(&shape, 18, 1, 0);
+        
+        for i in 1..pf.n_cols() - 1 {
+            assert_eq!(1, pf.get_cell(18, i));
+            assert_eq!(1, pf.get_cell(19, i));
+            if i == 1 {
+                assert_eq!(0, pf.get_cell(20, i));
+            } else {
+                assert_eq!(1, pf.get_cell(20, i));
+            }
+            assert_eq!(1, pf.get_cell(21, i));
+        }
+
+        pf.clear_rows(&vec![18, 19, 21]);
+
+        for i in 1..pf.n_cols() - 1 {
+            assert_eq!(0, pf.get_cell(18, i));
+            assert_eq!(0, pf.get_cell(19, i));
+            assert_eq!(0, pf.get_cell(20, i));
+            if i == 1 {
+                assert_eq!(0, pf.get_cell(21, i));
+            } else {
+                assert_eq!(1, pf.get_cell(21, i));
+            }
+        }
+
+        // Test clearing 2 rows with some garbage
+        // in between (alterbate rows)
+
+        let mut pf = Playfield::build();
+        let shape = Shape::build(ShapeData::build(
+            vec![0, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                 0, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            10,
+            BLACK,
+        ));
+        pf.add(&shape, 18, 1, 0);
+        
+        for i in 1..pf.n_cols() - 1 {
+            assert_eq!(1, pf.get_cell(19, i));
+            if i == 1 {
+                assert_eq!(0, pf.get_cell(18, i));
+                assert_eq!(0, pf.get_cell(20, i));
+            } else {
+                assert_eq!(1, pf.get_cell(18, i));
+                assert_eq!(1, pf.get_cell(20, i));
+            }
+            assert_eq!(1, pf.get_cell(21, i));
+        }
+
+        pf.clear_rows(&vec![19, 21]);
+
+        for i in 1..pf.n_cols() - 1 {
+            assert_eq!(0, pf.get_cell(18, i));
+            assert_eq!(0, pf.get_cell(19, i));
+            if i == 1 {
+                assert_eq!(0, pf.get_cell(20, i));
+                assert_eq!(0, pf.get_cell(21, i));
+            } else {
+                assert_eq!(1, pf.get_cell(20, i));
+                assert_eq!(1, pf.get_cell(21, i));
+            }
+        }
+
+        // Test clearing 2 rows with some garbage
+        // in between (consecutive rows)
+
+        let mut pf = Playfield::build();
+        let shape = Shape::build(ShapeData::build(
+            vec![1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                 0, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                 0, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            10,
+            BLACK,
+        ));
+        pf.add(&shape, 18, 1, 0);
+        
+        for i in 1..pf.n_cols() - 1 {
+            assert_eq!(1, pf.get_cell(18, i));
+            if i == 1 {
+                assert_eq!(0, pf.get_cell(19, i));
+                assert_eq!(0, pf.get_cell(20, i));
+            } else {
+                assert_eq!(1, pf.get_cell(19, i));
+                assert_eq!(1, pf.get_cell(20, i));
+            }
+            assert_eq!(1, pf.get_cell(21, i));
+        }
+
+        pf.clear_rows(&vec![18, 21]);
+
+        for i in 1..pf.n_cols() - 1 {
+            assert_eq!(0, pf.get_cell(18, i));
+            assert_eq!(0, pf.get_cell(19, i));
+            if i == 1 {
+                assert_eq!(0, pf.get_cell(20, i));
+                assert_eq!(0, pf.get_cell(21, i));
+            } else {
+                assert_eq!(1, pf.get_cell(20, i));
+                assert_eq!(1, pf.get_cell(21, i));
+            }
+        }
+        
+        // Test clearing 1 row with some garbage
+
+        let mut pf = Playfield::build();
+        let shape = Shape::build(ShapeData::build(
+            vec![0, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                 0, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                 0, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+                 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            10,
+            BLACK,
+        ));
+        pf.add(&shape, 18, 1, 0);
+        
+        for i in 1..pf.n_cols() - 1 {
+            if i == 1 {
+                assert_eq!(0, pf.get_cell(18, i));
+                assert_eq!(0, pf.get_cell(19, i));
+                assert_eq!(0, pf.get_cell(20, i));
+            } else {
+                assert_eq!(1, pf.get_cell(18, i));
+                assert_eq!(1, pf.get_cell(19, i));
+                assert_eq!(1, pf.get_cell(20, i));
+            }
+            assert_eq!(1, pf.get_cell(21, i));
+        }
+
+        pf.clear_rows(&vec![21]);
+
+        for i in 1..pf.n_cols() - 1 {
+            assert_eq!(0, pf.get_cell(18, i));
+            if i == 1 {
+                assert_eq!(0, pf.get_cell(19, i));
+                assert_eq!(0, pf.get_cell(20, i));
+                assert_eq!(0, pf.get_cell(21, i));
+            } else {
+                assert_eq!(1, pf.get_cell(19, i));
+                assert_eq!(1, pf.get_cell(20, i));
+                assert_eq!(1, pf.get_cell(21, i));
+            }
+        }
+
+    }
+
+    #[test]
+    fn test_playfield_is_empty() {
+        let mut pf = Playfield::build();
+        assert_eq!(true, pf.is_empty(0));
+        assert_eq!(true, pf.is_empty(1));
+        assert_eq!(true, pf.is_empty(2));
+        assert_eq!(true, pf.is_empty(3));
+
+        let shape = Shape::build(ShapeData::build(
+            vec![1, 1, 1, 1,
+                 1, 1, 1, 1],
+            4,
+            BLACK,
+        ));
+
+        pf.add(&shape, 0, 1, 0);
+        assert_eq!(false, pf.is_empty(0));
+        assert_eq!(false, pf.is_empty(1));
+        assert_eq!(true, pf.is_empty(2));
+        assert_eq!(true, pf.is_empty(3));
 
     }
 

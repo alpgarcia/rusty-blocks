@@ -414,13 +414,13 @@ async fn main() {
         // FIX SHAPE --------------------------------------------------
 
         if spawn_shape {
-            pf.add(&**current_shape, cs_row, cs_col, rot);
-
-            // TODO remove cleared lines
-            //      we could return the row numbers affected by the
-            //      add method and check if all their cells are 0
-            //      if so, remove them
-            //      and move the rest down
+            
+            // Add the shape to the playfield
+            let mod_rows = pf.add(&**current_shape, cs_row, cs_col, rot);
+            // Get the rows that need to be cleared, if any
+            let cleared_lines = pf.check_rows(&mod_rows);
+            // Clear the rows, if any
+            pf.clear_rows(&cleared_lines);
 
             // TODO add a score system
             // TODO add a level system
