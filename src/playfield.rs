@@ -151,13 +151,6 @@ impl Playfield {
     ///
     pub fn clear_rows(&mut self, rows: &Vec<usize>) {
 
-        // Clear the cells of the given rows
-        for row in rows.iter() {
-            for col in 1..Self::N_COLS - 1 {
-                self.cells[self.cell_idx(*row, col)] = 0;
-            }
-        }
-
         // Move the rows down
         // The rows are sorted in ascending order, so we start
         // from the top cleared row (closer to the top of the
