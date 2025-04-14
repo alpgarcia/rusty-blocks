@@ -1,6 +1,7 @@
 
 pub mod playfield;
 pub mod shape;
+pub mod rsg;
 
 pub fn add(left: u64, right: u64) -> u64 {
     left + right

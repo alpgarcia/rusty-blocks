@@ -4,124 +4,15 @@
 use macroquad::prelude::*;
 
 use rusty_blocks::playfield::Playfield;
-use rusty_blocks::shape::NesShape;
+use rusty_blocks::shape::RotationSystem;
 use rusty_blocks::shape::Shape;
-use rusty_blocks::shape::Rotation;
-use rusty_blocks::shape::ShapeData;
-use rusty_blocks::shape::StillShape;
+use rusty_blocks::shape::ShapeFactory;
 
 
 const BLOCK_SIZE: f32 = 20.0;
 const SHIFT_DELAY: f64 = 0.1;
 const QUICK_DROP_DELAY: f64 = 0.05;
 
-
-fn generate_srs_shapes() -> Vec<Box<dyn Rotation>> {
-
-    // TODO move this to shapes module?
-    // TODO: separate SRS and NES shapes
-
-    let j: Vec<usize> =Vec::from([
-        1, 0, 0,
-        1, 1, 1,
-        0, 0, 0,
-    ]);
-    let j_nes: Vec<usize> =Vec::from([
-        0, 0, 0,
-        1, 1, 1,
-        0, 0, 1,
-    ]);
-
-    let l: Vec<usize> = Vec::from([
-        0, 0, 1,
-        1, 1, 1,
-        0, 0, 0,
-    ]);
-    let l_nes: Vec<usize> = Vec::from([
-        0, 0, 0,
-        1, 1, 1,
-        1, 0, 0,
-    ]);
-
-    let s: Vec<usize> = Vec::from([
-        0, 1, 1,
-        1, 1, 0,
-        0, 0, 0,
-    ]);
-    let s_nes: Vec<usize> = Vec::from([
-        0, 0, 0,
-        0, 1, 1,
-        1, 1, 0,
-    ]);
-
-    let z: Vec<usize> = Vec::from([
-        1, 1, 0,
-        0, 1, 1,
-        0, 0, 0,
-    ]);
-    let z_nes: Vec<usize> = Vec::from([
-        0, 0, 0,
-        1, 1, 0,
-        0, 1, 1,
-    ]);
-
-    let i: Vec<usize> = Vec::from([
-        0, 0, 0, 0,
-        1, 1, 1, 1,
-        0, 0, 0, 0,
-        0, 0, 0, 0,
-    ]);
-    let i_nes: Vec<usize> = Vec::from([
-        0, 0, 0, 0,
-        0, 0, 0, 0,
-        1, 1, 1, 1,
-        0, 0, 0, 0,
-    ]);
-
-    let t: Vec<usize> = Vec::from([
-        0, 1, 0,
-        1, 1, 1,
-        0, 0, 0,
-    ]);
-    let t_nes: Vec<usize> = Vec::from([
-        0, 0, 0,
-        1, 1, 1,
-        0, 1, 0,
-    ]);
-
-    let o: Vec<usize> = Vec::from([
-        0, 1, 1, 0,
-        0, 1, 1, 0,
-        0, 0, 0, 0,
-    ]);
-
-    let o_nes: Vec<usize> = Vec::from([
-        0, 0, 0, 0,
-        0, 1, 1, 0,
-        0, 1, 1, 0,
-        0, 0, 0, 0,
-    ]);
-    
-    vec![
-        // SRS
-        Box::new(Shape::build(ShapeData::build(j, 3, PINK))),
-        Box::new(Shape::build(ShapeData::build(l, 3, BLUE))),
-        Box::new(Shape::build(ShapeData::build(s, 3, GREEN))),
-        Box::new(Shape::build(ShapeData::build(z, 3, ORANGE))),
-        Box::new(Shape::build(ShapeData::build(i, 4, RED))),
-        Box::new(Shape::build(ShapeData::build(t, 3, PURPLE))),
-        Box::new(StillShape::build(ShapeData::build(o, 4, YELLOW))),
-
-        // NES
-        // Box::new(Shape::build(ShapeData::build(j_nes, 3, PINK))),
-        // Box::new(Shape::build(ShapeData::build(l_nes, 3, BLUE))),
-        // Box::new(NesShape::build(ShapeData::build(s_nes, 3, GREEN))),
-        // Box::new(NesShape::build(ShapeData::build(z_nes, 3, ORANGE))),
-        // Box::new(NesShape::build(ShapeData::build(i_nes, 4, RED))),
-        // Box::new(Shape::build(ShapeData::build(t_nes, 3, PURPLE))),
-        // Box::new(StillShape::build(ShapeData::build(o_nes, 4, YELLOW))),
-    ]
-}
 
 fn color_for(i: usize) -> Color {
     if i == 0 {
@@ -163,15 +54,15 @@ fn draw_playfield(p: &Playfield, pos_x: f32, pos_y: f32, block_size: f32) {
     }
 }
 
-fn draw_shape(shape: &dyn Rotation, pos_x: f32, pos_y: f32, 
+fn draw_shape(shape: &Shape, pos_x: f32, pos_y: f32, 
                                     r: isize, block_size: f32) {
 
     // TODO move this to a drawing/graphics module?
 
-    for i in 0..shape.shape_data().len() {
+    for i in 0..shape.len() {
         
-        let shape_row = shape.shape_data().row(i);
-        let shape_col = shape.shape_data().col(i);
+        let shape_row = shape.row(i);
+        let shape_col = shape.col(i);
         
         if *shape.rotate(shape_row, shape_col, r) != 0 {
             draw_rectangle(
@@ -179,7 +70,7 @@ fn draw_shape(shape: &dyn Rotation, pos_x: f32, pos_y: f32,
                 pos_y + (shape_row as f32 * block_size) + 1.0,
                 block_size - 2.0,
                 block_size - 2.0,
-                shape.shape_data().color(),
+                shape.color(),
             );
         } 
         // else {
@@ -195,7 +86,7 @@ fn draw_shape(shape: &dyn Rotation, pos_x: f32, pos_y: f32,
 
 }
 
-fn rotate_clockwise(pf: &Playfield, shape: &dyn Rotation, 
+fn rotate_clockwise(pf: &Playfield, shape: &Shape, 
                     cs_row: usize, cs_col: isize, rot: isize) -> isize {
     
     if pf.collides(shape, cs_row, cs_col as isize, (rot + 1) % 4) {
@@ -205,7 +96,7 @@ fn rotate_clockwise(pf: &Playfield, shape: &dyn Rotation,
     }
 }
 
-fn rotate_counter_cw(pf: &Playfield, shape: &dyn Rotation, 
+fn rotate_counter_cw(pf: &Playfield, shape:  &Shape, 
                      cs_row: usize, cs_col: isize, rot: isize) -> isize{
     
     let new_rot: isize;
@@ -222,36 +113,22 @@ fn rotate_counter_cw(pf: &Playfield, shape: &dyn Rotation,
     }
 }
 
-fn random_shape(shapes: &Vec<Box<dyn Rotation>>) -> &Box<dyn Rotation> {
-    
-    // TODO: implement different shape generation algorithms
-
-    let shape_idx = rand::gen_range(0, shapes.len());
-    
-    &shapes[shape_idx]
-
-}
-
 #[macroquad::main("Rusty Blocks")]
 async fn main() {
 
     // TODO: add a menu
 
-    // Initialize random number generator
-    rand::srand(miniquad::date::now() as u64);
+    let mut shape_manager = ShapeFactory::new(RotationSystem::SRS);
 
-    // TODO try to add NES & Gameboy shapes options too
-    let shapes = generate_srs_shapes();
-
-    let mut pf = Playfield::build();
+    let mut pf = Playfield::new();
 
     let mut rotation_demo = false;
 
     // Initialize first shape
-    let mut current_shape = random_shape(&shapes);
+    let mut current_shape = shape_manager.current_shape();
     let mut cs_col: isize = 
                     ((pf.n_cols() / 2) 
-                     - (current_shape.shape_data().width() / 2)) 
+                     - (current_shape.width() / 2)) 
                      as isize;
     let mut cs_row: usize = 0;
     let mut rot: isize = 0;
@@ -290,11 +167,10 @@ async fn main() {
             
             // TODO: shape parameters could be stored in a struct
             // TODO: this code is repeated before starting the loop
-            // TODO: add a queue of shapes to spawn
-            current_shape = random_shape(&shapes);
+            current_shape = shape_manager.current_shape();
 
             cs_col = ((pf.n_cols() / 2) 
-                     - (current_shape.shape_data().width() / 2))
+                     - (current_shape.width() / 2))
                      as isize;
             cs_row = 0;
             rot = 0;
@@ -302,7 +178,7 @@ async fn main() {
 
             drop_start = get_time();
 
-            if pf.collides(&**current_shape, cs_row, cs_col as isize, rot) {
+            if pf.collides(&current_shape, cs_row, cs_col as isize, rot) {
                 // TODO game over
                 println!("Game Over");
                 break;
@@ -317,12 +193,12 @@ async fn main() {
                     if touch.position.x > screen_width() / 2.0 {
                         
                         rot = rotate_clockwise(
-                            &pf, &**current_shape, cs_row, cs_col, rot);
+                            &pf, &current_shape, cs_row, cs_col, rot);
 
                     } else {
 
                         rot = rotate_counter_cw(
-                            &pf, &**current_shape, cs_row, cs_col, rot);
+                            &pf, &current_shape, cs_row, cs_col, rot);
                     }
                 },
                 _ => (),
@@ -331,12 +207,12 @@ async fn main() {
 
         if is_key_pressed(KeyCode::D) { 
             rot = rotate_clockwise(
-                &pf, &**current_shape, cs_row, cs_col, rot);
+                &pf, &current_shape, cs_row, cs_col, rot);
         }
 
         if is_key_pressed(KeyCode::S) { 
             rot = rotate_counter_cw(
-                &pf, &**current_shape, cs_row, cs_col, rot);
+                &pf, &current_shape, cs_row, cs_col, rot);
         }
 
         if is_key_pressed(KeyCode::R) {
@@ -351,7 +227,7 @@ async fn main() {
             
         if is_key_down(KeyCode::Left) 
             && !pf.collides(
-                &**current_shape, cs_row, cs_col as isize - 1, rot) {
+                &current_shape, cs_row, cs_col as isize - 1, rot) {
                 
                 if first_press || get_time() - shift_start >= SHIFT_DELAY {
                     
@@ -363,9 +239,8 @@ async fn main() {
 
         if is_key_down(KeyCode::Right)
             && !pf.collides(
-                &**current_shape, cs_row, cs_col  as isize + 1 as isize, rot) {
+                &current_shape, cs_row, cs_col  as isize + 1 as isize, rot) {
                 
-                // TODO: apply a different delay for quick drop
                 if first_press || get_time() - shift_start >= SHIFT_DELAY {
                     
                     cs_col += 1;
@@ -376,7 +251,7 @@ async fn main() {
 
         if is_key_down(KeyCode::Down) {
             if !pf.collides(
-                &**current_shape, cs_row + 1, cs_col as isize, rot) {
+                &current_shape, cs_row + 1, cs_col as isize, rot) {
                 
                 if first_press || get_time() - shift_start >= QUICK_DROP_DELAY {
                     
@@ -401,7 +276,7 @@ async fn main() {
 
         if !spawn_shape && get_time() - drop_start >= drop_delay {
             if !pf.collides(
-                &**current_shape, cs_row + 1, cs_col as isize, rot) {
+                &current_shape, cs_row + 1, cs_col as isize, rot) {
                 
                 cs_row += 1;
                 drop_start = get_time();
@@ -416,7 +291,7 @@ async fn main() {
         if spawn_shape {
             
             // Add the shape to the playfield
-            let mod_rows = pf.add(&**current_shape, cs_row, cs_col, rot);
+            let mod_rows = pf.add(&current_shape, cs_row, cs_col, rot);
             // Get the rows that need to be cleared, if any
             let cleared_lines = pf.check_rows(&mod_rows);
             // Clear the rows, if any
@@ -437,14 +312,14 @@ async fn main() {
 
             let cs_x = pf_x + (cs_col as f32 * block_size);
             let cs_y = pf_y + (cs_row as f32 * block_size);
-            draw_shape(&**current_shape, cs_x, cs_y, rot, block_size);
+            draw_shape(&current_shape, cs_x, cs_y, rot, block_size);
         
         } else {
         
             let mut pos_x = block_size;
             let mut pos_y = -50.0;
             let mut i = 0;
-            for shape in &shapes {
+            for shape in shape_manager.shapes() {
 
                 if pos_x + block_size * 5.0 >= screen_width() ||
                     i % 7 == 0 {
@@ -463,7 +338,7 @@ async fn main() {
 
                 i += 1;
 
-                draw_shape(&**shape, pos_x, pos_y, rot, block_size);
+                draw_shape(shape, pos_x, pos_y, rot, block_size);
                 pos_x += block_size * 5.0;
             }
         }

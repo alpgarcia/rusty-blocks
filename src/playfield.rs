@@ -1,6 +1,5 @@
-use std::collections::HashSet;
 
-use crate::shape::Rotation;
+use crate::shape::Shape;
 
 
 
@@ -12,7 +11,7 @@ impl Playfield {
 
     const N_COLS: usize = 12;
 
-    pub fn build() -> Self{
+    pub fn new() -> Self{
 
         // Set borders at cols 0 and 11
         let mut _cells = [0;276];
@@ -66,15 +65,15 @@ impl Playfield {
     /// the playfield. The rows are sorted in ascending
     /// order.
     /// 
-    pub fn add(&mut self, shape: &dyn Rotation, 
+    pub fn add(&mut self, shape: &Shape, 
                row: usize, col: isize, r: isize) -> Vec<usize> {
         
         let mut rows: Vec<usize> = Vec::new();
 
-        for i in 0..shape.shape_data().len() {
+        for i in 0..shape.len() {
         
-            let shape_row = shape.shape_data().row(i);
-            let shape_col = shape.shape_data().col(i);
+            let shape_row = shape.row(i);
+            let shape_col = shape.col(i);
 
             let v = *shape.rotate(shape_row, shape_col, r);
             if v > 0 {
@@ -183,15 +182,15 @@ impl Playfield {
         }
     } 
 
-    pub fn collides(&self, shape: &dyn Rotation, 
+    pub fn collides(&self, shape: &Shape, 
                 row: usize, col: isize, r: isize) -> bool{
 
         let mut collision = false;
 
-        for i in 0..shape.shape_data().len() {
+        for i in 0..shape.len() {
 
-            let shape_row = shape.shape_data().row(i);
-            let shape_col = shape.shape_data().col(i);
+            let shape_row = shape.row(i);
+            let shape_col = shape.col(i);
 
             let v = *shape.rotate(shape_row, shape_col, r);
 
@@ -236,14 +235,13 @@ impl Playfield {
 mod tests {
     use macroquad::color::BLACK;
 
-    use crate::shape::Shape;
-    use crate::shape::ShapeData;
-
     use super::Playfield;
+    use crate::shape::{Shape, RotationType};
+    
 
     #[test]
     fn test_playfield() {
-        let pf = Playfield::build();
+        let pf = Playfield::new();
         assert_eq!(23, pf.n_rows());
         assert_eq!(12, pf.n_cols());
 
@@ -260,14 +258,15 @@ mod tests {
 
     #[test]
     fn test_playfield_add() {
-        let mut pf = Playfield::build();
+        let mut pf = Playfield::new();
 
-        let shape = Shape::build(ShapeData::build(
+        let shape = Shape::new(
             vec![0, 1, 1, 0,
                  0, 1, 1, 0],
             4,
             BLACK,
-        ));
+            RotationType::SRS
+        );
 
         // Add shape to playfield at (0, 0) with rotation 0
         // (don't overwrite the borders)
@@ -286,13 +285,14 @@ mod tests {
         assert_eq!(0, pf.get_cell(2, 3));
 
         // Add shape to playfield overlapping the borders
-        let mut pf = Playfield::build();
-        let shape = Shape::build(ShapeData::build(
+        let mut pf = Playfield::new();
+        let shape = Shape::new(
             vec![1, 1, 1, 0,
                  1, 1, 1, 0],
             4,
             BLACK,
-        ));
+            RotationType::SRS
+        );
         assert_eq!(vec![0, 1], pf.add(&shape, 0, 0, 0));
         assert_eq!(1, pf.get_cell(0, 0));
         assert_eq!(1, pf.get_cell(0, 1));
@@ -309,13 +309,14 @@ mod tests {
 
         // Add shape to the playfield with blank columns
         // on the left side
-        let mut pf = Playfield::build();
-        let shape = Shape::build(ShapeData::build(
+        let mut pf = Playfield::new();
+        let shape = Shape::new(
             vec![0, 0, 1, 0,
                  0, 0, 1, 0],
             4,
             BLACK,
-        ));
+            RotationType::SRS
+        );
         assert_eq!(vec![0, 1], pf.add(&shape, 0, -1, 0));
         assert_eq!(99, pf.get_cell(0, 0));
         assert_eq!(1, pf.get_cell(0, 1));
@@ -334,14 +335,15 @@ mod tests {
 
     #[test]
     fn test_playfield_collides() {
-        let mut pf = Playfield::build();
+        let mut pf = Playfield::new();
 
-        let shape = Shape::build(ShapeData::build(
+        let shape = Shape::new(
             vec![0, 1, 1, 0,
                  0, 1, 1, 0],
             4,
             BLACK,
-        ));
+            RotationType::SRS
+        );
 
         // Add shape to playfield at (0, 0) with rotation 0
         // (don't overwrite the borders)
@@ -357,15 +359,16 @@ mod tests {
         assert_eq!(false, pf.collides(&shape, 2, 1, 0));
 
         // Add shape to playfield overlapping the borders
-        let pf = Playfield::build();
-        let shape = Shape::build(ShapeData::build(
+        let pf = Playfield::new();
+        let shape = Shape::new(
             vec![1, 1, 1, 0,
                  1, 1, 1, 0,
                  0, 0, 0, 0,
                  0, 0, 0, 0],
             4,
             BLACK,
-        ));
+            RotationType::SRS
+        );
         // Test side borders collisions
         for i in 0..pf.n_rows() {
             assert_eq!(true, pf.collides(&shape, i, 0, 0));
@@ -395,15 +398,16 @@ mod tests {
 
         // Test left border collision when the first column of the shape
         // needs to be places out of bounds
-        let pf = Playfield::build();
-        let shape = Shape::build(ShapeData::build(
+        let pf = Playfield::new();
+        let shape = Shape::new(
             vec![0, 1, 1, 0,
                  0, 1, 1, 0,
                  0, 0, 0, 0,
                  0, 0, 0, 0],
             4,
             BLACK,
-        ));
+            RotationType::SRS
+        );
         // Test left border collisions
         for i in 0..pf.n_rows() {
             assert_eq!(true, pf.collides(&shape, i, -1, 0));
@@ -411,43 +415,46 @@ mod tests {
 
         // Test collision when a shape rotation leaves some blocks
         // out of bounds (col < 0)
-        let pf = Playfield::build();
-        let shape = Shape::build(ShapeData::build(
+        let pf = Playfield::new();
+        let shape = Shape::new(
             vec![0, 0, 1, 0,
                  0, 0, 1, 0,
                  0, 0, 1, 0,
                  0, 0, 1, 0],
             4,
             BLACK,
-        ));
+            RotationType::SRS
+        );
         // Test left border collisions
         for i in 0..pf.n_rows() {
             assert_eq!(true, pf.collides(&shape, i, -1, 1));
         }
 
-        let pf = Playfield::build();
-        let shape = Shape::build(ShapeData::build(
+        let pf = Playfield::new();
+        let shape = Shape::new(
             vec![0, 1, 0, 0,
                  0, 1, 0, 0,
                  0, 1, 0, 0,
                  0, 1, 0, 0],
             4,
             BLACK,
-        ));
+            RotationType::SRS
+        );
         // Test left border collisions
         for i in 0..pf.n_rows() {
             assert_eq!(true, pf.collides(&shape, i, 0, 1));
         }
 
-        let pf = Playfield::build();
-        let shape = Shape::build(ShapeData::build(
+        let pf = Playfield::new();
+        let shape = Shape::new(
             vec![0, 1, 0, 0,
                  0, 1, 0, 0,
                  0, 1, 0, 0,
                  0, 1, 0, 0],
             4,
             BLACK,
-        ));
+            RotationType::SRS
+        );
         // Test left border collisions
         for i in 0..pf.n_rows() {
             assert_eq!(true, pf.collides(&shape, i, -1, 1));
@@ -455,43 +462,46 @@ mod tests {
 
         // Test collision when a shape rotation leaves some blocks
         // out of the playfield on the right edge (col > 11)
-        let pf = Playfield::build();
-        let shape = Shape::build(ShapeData::build(
+        let pf = Playfield::new();
+        let shape = Shape::new(
             vec![0, 0, 1, 0,
                  0, 0, 1, 0,
                  0, 0, 1, 0,
                  0, 0, 1, 0],
             4,
             BLACK,
-        ));
+            RotationType::SRS
+        );
         // Test left border collisions
         for i in 0..pf.n_rows() {
             assert_eq!(true, pf.collides(&shape, i, 10, 1));
         }
 
-        let pf = Playfield::build();
-        let shape = Shape::build(ShapeData::build(
+        let pf = Playfield::new();
+        let shape = Shape::new(
             vec![0, 0, 1, 0,
                  0, 0, 1, 0,
                  0, 0, 1, 0,
                  0, 0, 1, 0],
             4,
             BLACK,
-        ));
+            RotationType::SRS
+        );
         // Test left border collisions
         for i in 0..pf.n_rows() {
             assert_eq!(true, pf.collides(&shape, i, 11, 1));
         }
 
-        let pf = Playfield::build();
-        let shape = Shape::build(ShapeData::build(
+        let pf = Playfield::new();
+        let shape = Shape::new(
             vec![0, 0, 1, 0,
                  0, 0, 1, 0,
                  0, 0, 1, 0,
                  0, 0, 1, 0],
             4,
             BLACK,
-        ));
+            RotationType::SRS
+        );
         // Test left border collisions
         for i in 0..pf.n_rows() {
             assert_eq!(true, pf.collides(&shape, i, 12, 1));
@@ -501,16 +511,17 @@ mod tests {
 
     #[test]
     fn test_playfield_check_rows() {
-        let mut pf = Playfield::build();
+        let mut pf = Playfield::new();
 
-        let shape = Shape::build(ShapeData::build(
+        let shape = Shape::new(
             vec![1, 1, 1, 0,
                  1, 1, 1, 0,
                  0, 0, 0, 0,
                  0, 0, 0, 0],
             4,
             BLACK,
-        ));
+            RotationType::SRS
+        );
 
         // Add shape to playfield at (0, 0) with rotation 0
         // (don't overwrite the borders)
@@ -539,15 +550,16 @@ mod tests {
 
         // Test clearing 4 rows
 
-        let mut pf = Playfield::build();
-        let shape = Shape::build(ShapeData::build(
+        let mut pf = Playfield::new();
+        let shape = Shape::new(
             vec![1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                  1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                  1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                  1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
             10,
             BLACK,
-        ));
+            RotationType::SRS
+        );
         pf.add(&shape, 18, 1, 0);
         
         for i in 1..pf.n_cols() - 1 {
@@ -569,15 +581,16 @@ mod tests {
         // Test clearing 2 rows with some garbage above
         // that needs to be moved down
 
-        let mut pf = Playfield::build();
+        let mut pf = Playfield::new();
 
-        let shape = Shape::build(ShapeData::build(
+        let shape = Shape::new(
             vec![0, 0, 0, 0, 0, 0, 1, 1, 1, 1,
                  1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                  1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
             10,
             BLACK,
-        ));
+            RotationType::SRS
+        );
 
         pf.add(&shape, 19, 1, 0);
 
@@ -608,15 +621,16 @@ mod tests {
         // Test clearing 3 rows with some garbage
         // in between
 
-        let mut pf = Playfield::build();
-        let shape = Shape::build(ShapeData::build(
+        let mut pf = Playfield::new();
+        let shape = Shape::new(
             vec![1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                  1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                  0, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                  1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
             10,
             BLACK,
-        ));
+            RotationType::SRS
+        );
         pf.add(&shape, 18, 1, 0);
         
         for i in 1..pf.n_cols() - 1 {
@@ -646,15 +660,16 @@ mod tests {
         // Test clearing 2 rows with some garbage
         // in between (alterbate rows)
 
-        let mut pf = Playfield::build();
-        let shape = Shape::build(ShapeData::build(
+        let mut pf = Playfield::new();
+        let shape = Shape::new(
             vec![0, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                  1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                  0, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                  1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
             10,
             BLACK,
-        ));
+            RotationType::SRS
+        );
         pf.add(&shape, 18, 1, 0);
         
         for i in 1..pf.n_cols() - 1 {
@@ -686,15 +701,16 @@ mod tests {
         // Test clearing 2 rows with some garbage
         // in between (consecutive rows)
 
-        let mut pf = Playfield::build();
-        let shape = Shape::build(ShapeData::build(
+        let mut pf = Playfield::new();
+        let shape = Shape::new(
             vec![1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                  0, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                  0, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                  1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
             10,
             BLACK,
-        ));
+            RotationType::SRS
+        );
         pf.add(&shape, 18, 1, 0);
         
         for i in 1..pf.n_cols() - 1 {
@@ -725,15 +741,16 @@ mod tests {
         
         // Test clearing 1 row with some garbage
 
-        let mut pf = Playfield::build();
-        let shape = Shape::build(ShapeData::build(
+        let mut pf = Playfield::new();
+        let shape = Shape::new(
             vec![0, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                  0, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                  0, 1, 1, 1, 1, 1, 1, 1, 1, 1,
                  1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
             10,
             BLACK,
-        ));
+            RotationType::SRS
+        );
         pf.add(&shape, 18, 1, 0);
         
         for i in 1..pf.n_cols() - 1 {
@@ -768,18 +785,19 @@ mod tests {
 
     #[test]
     fn test_playfield_is_empty() {
-        let mut pf = Playfield::build();
+        let mut pf = Playfield::new();
         assert_eq!(true, pf.is_empty(0));
         assert_eq!(true, pf.is_empty(1));
         assert_eq!(true, pf.is_empty(2));
         assert_eq!(true, pf.is_empty(3));
 
-        let shape = Shape::build(ShapeData::build(
+        let shape = Shape::new(
             vec![1, 1, 1, 1,
                  1, 1, 1, 1],
             4,
             BLACK,
-        ));
+            RotationType::SRS
+        );
 
         pf.add(&shape, 0, 1, 0);
         assert_eq!(false, pf.is_empty(0));
