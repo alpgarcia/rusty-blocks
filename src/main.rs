@@ -3,88 +3,17 @@
 
 use macroquad::prelude::*;
 
+use rusty_blocks::demo;
+use rusty_blocks::graphics::Graphics;
 use rusty_blocks::playfield::Playfield;
 use rusty_blocks::shape::RotationSystem;
 use rusty_blocks::shape::Shape;
 use rusty_blocks::shape::ShapeFactory;
 
 
-const BLOCK_SIZE: f32 = 20.0;
 const SHIFT_DELAY: f64 = 0.1;
 const QUICK_DROP_DELAY: f64 = 0.05;
 
-
-fn color_for(i: usize) -> Color {
-    if i == 0 {
-        BLACK
-    } else if i == 99 {
-        DARKPURPLE 
-    } else {
-        WHITE
-    }
-}
-
-fn draw_playfield(p: &Playfield, pos_x: f32, pos_y: f32, block_size: f32) {
-    // Draw hidden rows
-    // TODO we might use some kind of animation for these killing zone
-    for row in 0..2 {
-        for col in 0..p.n_cols() {
-            draw_rectangle_lines(
-                pos_x + (col as f32 * block_size) + 1.0,
-                pos_y + (row as f32 * block_size) + 1.0,
-                block_size - 2.0,
-                block_size - 2.0,
-                4.0,
-                color_for(p.get_cell(row, col)),
-            );
-        }
-    }
-
-    // Draw visible rows
-    for row in 2..p.n_rows() {
-        for col in 0..p.n_cols() {
-            draw_rectangle(
-                pos_x + (col as f32 * block_size) + 1.0,
-                pos_y + (row as f32 * block_size) + 1.0,
-                block_size - 2.0,
-                block_size - 2.0,
-                color_for(p.get_cell(row, col)),
-            );
-        }
-    }
-}
-
-fn draw_shape(shape: &Shape, pos_x: f32, pos_y: f32, 
-                                    r: isize, block_size: f32) {
-
-    // TODO move this to a drawing/graphics module?
-
-    for i in 0..shape.len() {
-        
-        let shape_row = shape.row(i);
-        let shape_col = shape.col(i);
-        
-        if *shape.rotate(shape_row, shape_col, r) != 0 {
-            draw_rectangle(
-                pos_x + (shape_col as f32 * block_size) + 1.0,
-                pos_y + (shape_row as f32 * block_size) + 1.0,
-                block_size - 2.0,
-                block_size - 2.0,
-                shape.color(),
-            );
-        } 
-        // else {
-        //     draw_rectangle(
-        //         pos_x + (shape_col as f32 * block_size) + 1.0,
-        //         pos_y + (shape_row as f32 * block_size) + 1.0,
-        //         block_size - 2.0,
-        //         block_size - 2.0,
-        //         BLACK,
-        //     );
-        // }
-    }
-
-}
 
 fn rotate_clockwise(pf: &Playfield, shape: &Shape, 
                     cs_row: usize, cs_col: isize, rot: isize) -> isize {
@@ -118,9 +47,11 @@ async fn main() {
 
     // TODO: add a menu
 
-    let mut shape_manager = ShapeFactory::new(RotationSystem::NES);
-
     let mut pf = Playfield::new();
+
+    let mut graphics = Graphics::new(&pf);
+
+    let mut shape_manager = ShapeFactory::new(RotationSystem::NES);
 
     let mut rotation_demo = false;
 
@@ -152,14 +83,7 @@ async fn main() {
 
         // SCALE BLOCK SIZE AND COMPUTE UI COMPONENTS POSITIONS -------
 
-        // We'll use this to scale the game
-        let block_size = BLOCK_SIZE.min(screen_width() / 30.0)
-            .min(screen_height() / 30.0);
-
-        let pf_x = (screen_width() / 2.0) 
-                    - ((pf.n_cols() / 2) as f32 * block_size);
-        let pf_y = (screen_height() / 2.0) 
-                    - ((pf.n_rows() / 2) as f32 * block_size);
+        graphics.update_scale(&pf);
 
         // SPAWN NEW SHAPE --------------------------------------------
             
@@ -307,41 +231,18 @@ async fn main() {
 
         if !rotation_demo {
             
-            draw_playfield(&pf, pf_x, pf_y, block_size);
+            graphics.draw_playfield(&pf);
 
             // DRAW CURRENT SHAPE -------------------------------------
 
-            let cs_x = pf_x + (cs_col as f32 * block_size);
-            let cs_y = pf_y + (cs_row as f32 * block_size);
-            draw_shape(&current_shape, cs_x, cs_y, rot, block_size);
+            graphics.draw_shape(
+                &current_shape, cs_row as f32, cs_col as f32, rot);
         
         } else {
         
-            let mut pos_x = block_size;
-            let mut pos_y = -50.0;
-            let mut i = 0;
-            for shape in shape_manager.shapes() {
+            demo::rotation_demo(&graphics,
+                &shape_manager, rot);
 
-                if pos_x + block_size * 5.0 >= screen_width() ||
-                    i % 7 == 0 {
-                    
-                    pos_x = block_size;
-                    pos_y += 100.0;
-
-                    if i == 0 {
-                        draw_text("SRS", pos_x, pos_y, 50.0, BLUE);
-                    } else if i == 7 {
-                        draw_text("NES", pos_x, pos_y, 50.0, BLUE);
-                    }
-                    
-                    pos_x += block_size * 5.0;
-                }
-
-                i += 1;
-
-                draw_shape(shape, pos_x, pos_y, rot, block_size);
-                pos_x += block_size * 5.0;
-            }
         }
 
         draw_fps();

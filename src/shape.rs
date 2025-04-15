@@ -7,6 +7,7 @@ pub trait Rotation {
 }
 
 pub trait ShapeBuilder {
+    fn name(&self) -> &str;
     fn build_shapes(&self) -> Vec<Shape>;
 }
 
@@ -63,6 +64,13 @@ impl Rotation for RotationType {
 }
 
 impl ShapeBuilder for RotationSystem {
+
+    fn name(&self) -> &str {
+        match self {
+            RotationSystem::SRS => "SRS",
+            RotationSystem::NES => "NES",
+        }
+    }
 
     fn build_shapes(&self) -> Vec<Shape> {
         match self {
