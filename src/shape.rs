@@ -17,6 +17,27 @@ pub enum RotationType {
     STILL,
 }
 
+pub enum RotationSystem {
+    SRS,
+    NES,
+}
+
+#[derive(Clone)]
+pub struct Shape {
+    m: Vec<usize>,
+    width: usize,
+    color: Color,
+    rot_type: RotationType,
+    row_offset: usize,
+}
+
+pub struct ShapeFactory {
+    shapes: Vec<Shape>,
+    rotation_system: RotationSystem,
+    random_shape_generator: Box<dyn RSG>,
+}
+
+
 impl Rotation for RotationType {
     fn rotate_cell(&self, row: usize, col: usize, rot: isize, width: usize) -> (usize, usize) {
         match self {
@@ -39,11 +60,6 @@ impl Rotation for RotationType {
             RotationType::STILL => (row, col),
         }
     }
-}
-
-pub enum RotationSystem {
-    SRS,
-    NES,
 }
 
 impl ShapeBuilder for RotationSystem {
@@ -152,30 +168,17 @@ impl RotationSystem {
         ]);
 
         vec![
-            Shape::new(j_nes, 3, PINK, RotationType::SRS),
-            Shape::new(l_nes, 3, BLUE, RotationType::SRS),
-            Shape::new(s_nes, 3, GREEN, RotationType::NES),
-            Shape::new(z_nes, 3, ORANGE, RotationType::NES),
+            Shape::new(j_nes, 3, PINK, RotationType::SRS).set_row_offset(1),
+            Shape::new(l_nes, 3, BLUE, RotationType::SRS).set_row_offset(1),
+            Shape::new(s_nes, 3, GREEN, RotationType::NES).set_row_offset(1),
+            Shape::new(z_nes, 3, ORANGE, RotationType::NES).set_row_offset(1),
             Shape::new(i_nes, 4, RED, RotationType::NES),
-            Shape::new(t_nes, 3, PURPLE, RotationType::SRS),
-            Shape::new(o_nes, 4, YELLOW, RotationType::STILL),
+            Shape::new(t_nes, 3, PURPLE, RotationType::SRS).set_row_offset(1),
+            Shape::new(o_nes, 4, YELLOW, RotationType::STILL).set_row_offset(1),
         ]
     }
 }
 
-#[derive(Clone)]
-pub struct Shape {
-    m: Vec<usize>,
-    width: usize,
-    color: Color,
-    rot_type: RotationType,
-}
-
-pub struct ShapeFactory {
-    shapes: Vec<Shape>,
-    rotation_system: RotationSystem,
-    random_shape_generator: Box<dyn RSG>,
-}
 
 impl Shape {
     pub fn new(m: Vec<usize>, width: usize, color: Color, shape_type: RotationType) -> Self {
@@ -184,6 +187,7 @@ impl Shape {
             width,
             color,
             rot_type: shape_type,
+            row_offset: 0,
         }
     }
 
@@ -199,12 +203,25 @@ impl Shape {
         self.m.len()
     }
 
+    pub fn rot_type(&self) -> &RotationType {
+        &self.rot_type
+    }
+
     pub fn row(&self, idx: usize) -> usize {
         idx / self.width()
     }
 
     pub fn col(&self, idx: usize) -> usize {
         idx % self.width()
+    }
+
+    pub fn row_offset(&self) -> usize {
+        self.row_offset
+    }
+
+    pub fn set_row_offset(mut self, row_offset: usize) -> Self {
+        self.row_offset = row_offset;
+        self
     }
 
     pub fn rotate(&self, row: usize, col: usize, rot: isize) -> &usize {

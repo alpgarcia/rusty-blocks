@@ -118,7 +118,7 @@ async fn main() {
 
     // TODO: add a menu
 
-    let mut shape_manager = ShapeFactory::new(RotationSystem::SRS);
+    let mut shape_manager = ShapeFactory::new(RotationSystem::NES);
 
     let mut pf = Playfield::new();
 
@@ -130,7 +130,7 @@ async fn main() {
                     ((pf.n_cols() / 2) 
                      - (current_shape.width() / 2)) 
                      as isize;
-    let mut cs_row: usize = 0;
+    let mut cs_row: usize = current_shape.row_offset();
     let mut rot: isize = 0;
     let mut spawn_shape = false;
 
@@ -172,7 +172,8 @@ async fn main() {
             cs_col = ((pf.n_cols() / 2) 
                      - (current_shape.width() / 2))
                      as isize;
-            cs_row = 0;
+            
+            cs_row = current_shape.row_offset();
             rot = 0;
             spawn_shape = false;
 
